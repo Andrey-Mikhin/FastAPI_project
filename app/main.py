@@ -98,4 +98,9 @@ def me(current_user = Depends(get_current_user)):
             "username": current_user.username,
             "created_at": current_user.created_at
         }
+
     return {"authenticated": False, "username": "anonymous"}
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
