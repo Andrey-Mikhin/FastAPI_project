@@ -1,0 +1,57 @@
+databases:
+  - name: url-shortener-db
+    databaseName: urlshortener
+    user: user
+    plan: free
+    region: frankfurt
+
+services:
+  - type: redis
+    name: url-shortener-redis
+    plan: free
+    region: frankfurt
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
+
+  - type: web
+    name: url-shortener-app
+    runtime: docker
+    repo: https://github.com/Andrey-Mikhin/FastAPI_project
+    branch: main
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./
+    envVars:
+      - key: DB_USER
+        value: user
+      - key: DB_PASS
+        fromDatabase:
+          name: url-shortener-db
+          property: password
+      - key: DB_NAME
+        value: urlshortener
+      - key: DB_HOST
+        fromDatabase:
+          name: url-shortener-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: url-shortener-db
+          property: port
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: url-shortener-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: url-shortener-redis
+          property: port
+      - key: BASE_URL
+        value: https://url-shortener-app.onrender.com
+      - key: SECRET_KEY
+        generateValue: true
+      - key: UNUSED_DAYS
+        value: 30
