@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: url-shortener-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: urlshortener
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - url-shortener-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: url-shortener-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - url-shortener-network
+
+  app:
+    build: .
+    container_name: url-shortener-app
+    ports:
+      - "8000:8000"
+    environment:
+      # PostgreSQL
+      DB_USER: user
+      DB_PASS: password
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: urlshortener
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Приложение
+      BASE_URL: http://localhost:8000
+      SECRET_KEY: your-super-secret-key-change-in-production
+      UNUSED_DAYS: 30
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/app
+    restart: unless-stopped
+    networks:
+      - url-shortener-network
+
+volumes:
+  postgres_data:
+    name: url-shortener-postgres-data
+  redis_data:
+    name: url-shortener-redis-data
+
+networks:
+  url-shortener-network:
+    name: url-shortener-network
+    driver: bridge
