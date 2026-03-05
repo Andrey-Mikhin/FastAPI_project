@@ -59,6 +59,7 @@ def root(current_user = Depends(get_current_user)):
                 input {{ padding: 8px; margin: 5px; width: 300px; }}
                 button {{ padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }}
                 .info {{ background: #f0f0f0; padding: 10px; margin: 10px 0; }}
+                pre {{ background: #f4f4f4; padding: 10px; }}
             </style>
         </head>
         <body>
@@ -68,24 +69,30 @@ def root(current_user = Depends(get_current_user)):
                 <a href="/docs">API Documentation</a>
             </div>
             
-            <h2>Регистрация</h2>
-            <form action="/register" method="post">
-                <input type="text" name="username" placeholder="Username" required><br>
-                <input type="password" name="password" placeholder="Password" required><br>
-                <button type="submit">Зарегистрироваться</button>
-            </form>
+            <h2>Регистрация (JSON)</h2>
+            <p>Для тестирования через браузер используйте <a href="/docs">Swagger UI</a></p>
             
-            <h2>Вход</h2>
-            <form action="/login" method="post">
-                <input type="text" name="username" placeholder="Username" required><br>
-                <input type="password" name="password" placeholder="Password" required><br>
-                <button type="submit">Войти</button>
-            </form>
+            <h3>Примеры curl команд:</h3>
+            <pre>
+# Регистрация
+curl -X POST {os.getenv('BASE_URL', 'https://url-shortener-app-p5ro.onrender.com')}/register \\
+  -H "Content-Type: application/json" \\
+  -d '{{"username": "test", "password": "test123"}}'
+
+# Вход
+curl -X POST {os.getenv('BASE_URL', 'https://url-shortener-app-p5ro.onrender.com')}/login \\
+  -H "Content-Type: application/json" \\
+  -d '{{"username": "test", "password": "test123"}}' \\
+  -c cookies.txt
+
+# Создание ссылки
+curl -X POST {os.getenv('BASE_URL', 'https://url-shortener-app-p5ro.onrender.com')}/links/shorten \\
+  -H "Content-Type: application/json" \\
+  -d '{{"original_url": "https://google.com"}}'
+            </pre>
             
-            <h2>Выход</h2>
-            <form action="/logout" method="post">
-                <button type="submit">Выйти</button>
-            </form>
+            <h2>Используйте Swagger UI для тестирования</h2>
+            <p><a href="/docs">Перейти к документации API →</a></p>
         </body>
     </html>
     """
@@ -104,3 +111,4 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
+
