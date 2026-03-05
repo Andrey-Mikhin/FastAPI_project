@@ -1,7 +1,7 @@
 databases:
   - name: url-shortener-db
     databaseName: urlshortener
-    user: user
+    user: urlshortener_user
     plan: free
     region: frankfurt
 
@@ -24,7 +24,7 @@ services:
     dockerContext: ./
     envVars:
       - key: DB_USER
-        value: user
+        value: urlshortener_user
       - key: DB_PASS
         fromDatabase:
           name: url-shortener-db
@@ -55,3 +55,5 @@ services:
         generateValue: true
       - key: UNUSED_DAYS
         value: 30
+      - key: PORT
+        value: 8000
