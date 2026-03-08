@@ -7,12 +7,17 @@ import json
 import random
 import string
 import os
+import sys
 import logging
 from typing import Optional
 from app import models, schemas, auth
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
+# НАСТРОЙКА ЛОГИРОВАНИЯ ДЛЯ RENDER
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout  # Явно указываем stdout
+)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/links", tags=["links"])
