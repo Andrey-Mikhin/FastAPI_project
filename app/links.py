@@ -38,7 +38,6 @@ def create_short_link(
     current_user = Depends(auth.get_current_user),
     db: Session = Depends(models.get_db)
 ):
-    # Проверка кастомного алиаса
     if link_data.custom_alias:
         if db.query(models.Link).filter(models.Link.short_code == link_data.custom_alias).first():
             raise HTTPException(status_code=400, detail="Alias already exists")
@@ -62,7 +61,6 @@ def create_short_link(
     db.commit()
     db.refresh(db_link)
     
-    # Кэширование
     redis_client.setex(
         f"link:{short_code}",
         3600,
@@ -82,7 +80,6 @@ def create_short_link(
 
 @router.get("/{short_code}")
 def redirect_to_url(short_code: str, db: Session = Depends(models.get_db)):
-    # Проверка кэша
     cached = redis_client.get(f"link:{short_code}")
     
     if cached:
@@ -209,8 +206,7 @@ def get_link_stats(short_code: str, db: Session = Depends(models.get_db)):
         "expires_at": db_link.expires_at.isoformat() if db_link.expires_at else None,
         "clicks": db_link.clicks,
         "created_by": db_link.username,
-        "last_accessed": db_link.last_accessed.isoformat() if db_link.last_accessed else None
-    }
+        "last_accessed": db_link.last_accessed.isoformat() if db_link.last_accessed else None}
     
     redis_client.setex(f"stats:{short_code}", 300, json.dumps(stats, default=str))
     return stats
@@ -230,8 +226,7 @@ def search_links(original_url: str, db: Session = Depends(models.get_db)):
             "original_url": l.original_url,
             "created_by": l.username
         }
-        for l in links
-    ]
+        for l in links]
 
 
 @router.get("/expired/history")
@@ -247,7 +242,7 @@ def get_expired_links(db: Session = Depends(models.get_db)):
             "expires_at": l.expires_at,
             "clicks": l.clicks,
             "last_accessed": l.last_accessed,
-            "reason": "expired" if l.expires_at and l.expires_at < datetime.utcnow() else "unused"
-        }
+            "reason": "expired" if l.expires_at and l.expires_at < datetime.utcnow() else "unused"}
         for l in expired
+
     ]
