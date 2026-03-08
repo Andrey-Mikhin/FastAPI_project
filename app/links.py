@@ -12,11 +12,10 @@ import logging
 from typing import Optional
 from app import models, schemas, auth
 
-# НАСТРОЙКА ЛОГИРОВАНИЯ ДЛЯ RENDER
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    stream=sys.stdout  # Явно указываем stdout
+    stream=sys.stdout
 )
 logger = logging.getLogger(__name__)
 
@@ -221,68 +220,11 @@ def get_link_stats(short_code: str, db: Session = Depends(models.get_db)):
 
 @router.get("/search")
 def search_links(original_url: str, db: Session = Depends(models.get_db)):
-    logger.info("="*60)
-    logger.info(f"🔍 ПОИСК: запрос '{original_url}'")
-    logger.info(f"🕒 Время: {datetime.utcnow()}")
-    
-    # 1. Получаем ВСЕ ссылки
-    all_links = db.query(models.Link).all()
-    logger.info(f"📊 ВСЕГО ССЫЛОК В БД: {len(all_links)}")
-    
-    active_count = 0
-    for i, link in enumerate(all_links, 1):
-        is_active = "✅ АКТИВНА" if link.is_active else "❌ НЕАКТИВНА"
-        logger.info(f"  {i}. [{is_active}] {link.short_code}: {link.original_url} (by {link.username})")
-        if link.is_active:
-            active_count += 1
-    
-    logger.info(f"📊 АКТИВНЫХ ССЫЛОК: {active_count}")
-    
-    # 2. Тестируем разные варианты
-    logger.info("🔬 ТЕСТИРУЕМ РАЗНЫЕ ВАРИАНТЫ ПОИСКА:")
-    
-    # Вариант 1: contains
-    links1 = db.query(models.Link).filter(
-        models.Link.original_url.contains(original_url),
-        models.Link.is_active == True
-    ).all()
-    logger.info(f"  Вариант 1 (contains): найдено {len(links1)}")
-    
-    # Вариант 2: like
-    links2 = db.query(models.Link).filter(
-        models.Link.original_url.like(f"%{original_url}%"),
-        models.Link.is_active == True
-    ).all()
-    logger.info(f"  Вариант 2 (like): найдено {len(links2)}")
-    
-    # Вариант 3: ilike
-    links3 = db.query(models.Link).filter(
+    """Поиск ссылок по части оригинального URL (регистронезависимый)"""
+    links = db.query(models.Link).filter(
         models.Link.original_url.ilike(f"%{original_url}%"),
         models.Link.is_active == True
     ).all()
-    logger.info(f"  Вариант 3 (ilike): найдено {len(links3)}")
-    
-    # Вариант 4: endswith
-    links4 = db.query(models.Link).filter(
-        models.Link.original_url.endswith(original_url),
-        models.Link.is_active == True
-    ).all()
-    logger.info(f"  Вариант 4 (endswith): найдено {len(links4)}")
-    
-    # Вариант 5: без протокола
-    if original_url.startswith(('http://', 'https://')):
-        without_protocol = original_url.split('://', 1)[1]
-        links5 = db.query(models.Link).filter(
-            models.Link.original_url.contains(without_protocol),
-            models.Link.is_active == True
-        ).all()
-        logger.info(f"  Вариант 5 (без протокола '{without_protocol}'): найдено {len(links5)}")
-    
-    # Используем contains
-    links = links1
-    
-    logger.info(f"✅ ИТОГ: возвращаем {len(links)} результатов")
-    logger.info("="*60)
     
     return [
         {
@@ -296,6 +238,7 @@ def search_links(original_url: str, db: Session = Depends(models.get_db)):
 
 @router.get("/expired/history")
 def get_expired_links(db: Session = Depends(models.get_db)):
+    """История всех неактивных ссылок"""
     expired = db.query(models.Link).filter(models.Link.is_active == False).all()
     
     return [
@@ -310,70 +253,4 @@ def get_expired_links(db: Session = Depends(models.get_db)):
             "reason": "expired" if l.expires_at and l.expires_at < datetime.utcnow() else "unused"
         }
         for l in expired
-    ]
-
-# ========== НОВЫЕ DEBUG ЭНДПОИНТЫ ==========
-
-@router.get("/debug/all")
-def debug_all(db: Session = Depends(models.get_db)):
-    """Вернуть ВСЕ ссылки без фильтров"""
-    links = db.query(models.Link).all()
-    result = {
-        "total_count": len(links),
-        "active_count": 0,
-        "inactive_count": 0,
-        "links": []
-    }
-    
-    for link in links:
-        link_info = {
-            "short_code": link.short_code,
-            "original_url": link.original_url,
-            "is_active": link.is_active,
-            "created_by": link.username,
-            "created_at": str(link.created_at),
-            "clicks": link.clicks,
-            "last_accessed": str(link.last_accessed) if link.last_accessed else None,
-            "expires_at": str(link.expires_at) if link.expires_at else None
-        }
-        result["links"].append(link_info)
-        
-        if link.is_active:
-            result["active_count"] += 1
-        else:
-            result["inactive_count"] += 1
-    
-    return result
-
-@router.get("/debug/active")
-def debug_active(db: Session = Depends(models.get_db)):
-    """Вернуть только активные ссылки"""
-    links = db.query(models.Link).filter(models.Link.is_active == True).all()
-    return [
-        {
-            "short_code": l.short_code,
-            "short_url": f"{BASE_URL}/links/{l.short_code}",
-            "original_url": l.original_url,
-            "created_by": l.username,
-            "clicks": l.clicks,
-            "created_at": str(l.created_at)
-        }
-        for l in links
-    ]
-
-@router.get("/debug/inactive")
-def debug_inactive(db: Session = Depends(models.get_db)):
-    """Вернуть только неактивные ссылки"""
-    links = db.query(models.Link).filter(models.Link.is_active == False).all()
-    return [
-        {
-            "short_code": l.short_code,
-            "original_url": l.original_url,
-            "created_by": l.username,
-            "clicks": l.clicks,
-            "created_at": str(l.created_at),
-            "expires_at": str(l.expires_at) if l.expires_at else None,
-            "last_accessed": str(l.last_accessed) if l.last_accessed else None
-        }
-        for l in links
     ]
