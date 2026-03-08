@@ -220,7 +220,7 @@ def get_link_stats(short_code: str, db: Session = Depends(models.get_db)):
 
 @router.get("/search")
 def search_links(original_url: str, db: Session = Depends(models.get_db)):
-    """Поиск ссылок по части оригинального URL (через ORM)"""
+    """Поиск ссылок по части оригинального URL"""
     links = db.query(models.Link).filter(
         models.Link.original_url.ilike(f"%{original_url}%"),
         models.Link.is_active == True
@@ -238,12 +238,11 @@ def search_links(original_url: str, db: Session = Depends(models.get_db)):
 
 @router.get("/search-new")
 def search_links_new(original_url: str, db: Session = Depends(models.get_db)):
-    """ВРЕМЕННАЯ версия с прямым SQL для диагностики"""
+    """Версия с прямым SQL"""
     from sqlalchemy import text
     
     logger.info(f"🔍 НОВЫЙ ПОИСК (RAW SQL): запрос '{original_url}'")
     
-    # Выполняем прямой SQL запрос с параметром
     result = db.execute(
         text("""
             SELECT short_code, original_url, username 
@@ -289,14 +288,12 @@ def debug_sql(db: Session = Depends(models.get_db)):
     """Прямой SQL-запрос к таблице links"""
     from sqlalchemy import text
     
-    # Получаем все активные ссылки через прямой SQL
     result = db.execute(text("""
         SELECT short_code, original_url, is_active, username
         FROM links 
         WHERE is_active = true
     """)).fetchall()
     
-    # Получаем структуру таблицы
     structure = db.execute(text("""
         SELECT column_name, data_type 
         FROM information_schema.columns 
@@ -317,4 +314,55 @@ def debug_sql(db: Session = Depends(models.get_db)):
             for r in result
         ],
         "total_active": len(result)
+    }
+
+# ========== НОВЫЕ ДИАГНОСТИЧЕСКИЕ ЭНДПОИНТЫ ==========
+
+@router.get("/debug/check/{short_code}")
+def debug_check_link(short_code: str, db: Session = Depends(models.get_db)):
+    """Проверить конкретную ссылку по short_code"""
+    from sqlalchemy import text
+    
+    result = db.execute(
+        text("SELECT short_code, original_url, is_active, username FROM links WHERE short_code = :code"),
+        {"code": short_code}
+    ).first()
+    
+    if not result:
+        return {"error": f"Link {short_code} not found in database"}
+    
+    return {
+        "short_code": result[0],
+        "original_url": result[1],
+        "is_active": result[2],
+        "created_by": result[3],
+        "message": "✅ Link found in database"
+    }
+
+@router.get("/debug/test-search")
+def debug_test_search(db: Session = Depends(models.get_db)):
+    """Тестовый поиск с фиксированным параметром 'simple'"""
+    from sqlalchemy import text
+    
+    search_term = "simple"
+    result = db.execute(
+        text("""
+            SELECT short_code, original_url, username 
+            FROM links 
+            WHERE original_url ILIKE :pattern AND is_active = true
+        """),
+        {"pattern": f"%{search_term}%"}
+    ).fetchall()
+    
+    return {
+        "search_term": search_term,
+        "results": [
+            {
+                "short_code": r[0],
+                "original_url": r[1],
+                "created_by": r[2]
+            }
+            for r in result
+        ],
+        "count": len(result)
     }
