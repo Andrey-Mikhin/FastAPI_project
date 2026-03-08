@@ -254,3 +254,35 @@ def get_expired_links(db: Session = Depends(models.get_db)):
         }
         for l in expired
     ]
+
+@router.get("/debug/sql")
+def debug_sql(db: Session = Depends(models.get_db)):
+    from sqlalchemy import text
+    
+    result = db.execute(text("""
+        SELECT short_code, original_url, is_active, username
+        FROM links 
+        WHERE is_active = true
+    """)).fetchall()
+    
+    structure = db.execute(text("""
+        SELECT column_name, data_type 
+        FROM information_schema.columns 
+        WHERE table_name = 'links'
+    """)).fetchall()
+    
+    return {
+        "table_structure": [
+            {"column": r[0], "type": r[1]} for r in structure
+        ],
+        "active_links": [
+            {
+                "short_code": r[0],
+                "original_url": r[1],
+                "is_active": r[2],
+                "created_by": r[3]
+            }
+            for r in result
+        ],
+        "total_active": len(result)
+    }
