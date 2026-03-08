@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -20,7 +20,8 @@ UNUSED_DAYS = int(os.getenv("UNUSED_DAYS", "30"))
 redis_client = redis.Redis(
     host=REDIS_HOST,
     port=int(REDIS_PORT),
-    decode_responses=True)
+    decode_responses=True
+)
 
 def generate_short_code(length: int = 6) -> str:
     chars = string.ascii_letters + string.digits
@@ -53,7 +54,8 @@ def create_short_link(
         custom_alias=link_data.custom_alias,
         expires_at=link_data.expires_at,
         user_id=current_user.id if current_user else None,
-        username=current_user.username if current_user else "anonymous")
+        username=current_user.username if current_user else "anonymous"
+    )
     
     db.add(db_link)
     db.commit()
@@ -72,8 +74,8 @@ def create_short_link(
         "created_at": db_link.created_at,
         "expires_at": db_link.expires_at,
         "clicks": 0,
-        "created_by": db_link.username}
-
+        "created_by": db_link.username
+    }
 
 @router.get("/{short_code}")
 def redirect_to_url(short_code: str, db: Session = Depends(models.get_db)):
@@ -117,7 +119,8 @@ def redirect_to_url(short_code: str, db: Session = Depends(models.get_db)):
         redis_client.setex(
             f"link:{short_code}",
             3600,
-            json.dumps({"url": original_url, "clicks": db_link.clicks}))
+            json.dumps({"url": original_url, "clicks": db_link.clicks})
+        )
     
     return RedirectResponse(url=original_url)
 
@@ -178,8 +181,8 @@ def update_link(
         "created_at": db_link.created_at,
         "expires_at": db_link.expires_at,
         "clicks": db_link.clicks,
-        "created_by": db_link.username}
-
+        "created_by": db_link.username
+    }
 
 @router.get("/{short_code}/stats")
 def get_link_stats(short_code: str, db: Session = Depends(models.get_db)):
@@ -200,37 +203,75 @@ def get_link_stats(short_code: str, db: Session = Depends(models.get_db)):
         "expires_at": db_link.expires_at.isoformat() if db_link.expires_at else None,
         "clicks": db_link.clicks,
         "created_by": db_link.username,
-        "last_accessed": db_link.last_accessed.isoformat() if db_link.last_accessed else None}
+        "last_accessed": db_link.last_accessed.isoformat() if db_link.last_accessed else None
+    }
     
     redis_client.setex(f"stats:{short_code}", 300, json.dumps(stats, default=str))
     return stats
 
-
 @router.get("/search")
 def search_links(original_url: str, db: Session = Depends(models.get_db)):
-    print(f"\n{'='*50}")
-    print(f"ПОИСК: запрос '{original_url}'")
-    print(f"Время: {datetime.utcnow()}")
+    print("\n" + "="*60)
+    print(f"🔍 ПОИСК: запрос '{original_url}'")
+    print(f"🕒 Время: {datetime.utcnow()}")
     
-    all_links = db.query(models.Link).filter(models.Link.is_active == True).all()
-    print(f" Всего активных ссылок в БД: {len(all_links)}")
-    for link in all_links:
-        print(f"   - {link.short_code}: {link.original_url}")
+    all_links = db.query(models.Link).all()
+    print(f"\n ВСЕГО ССЫЛОК В БД: {len(all_links)}")
     
-    links = db.query(models.Link).filter(
+    active_count = 0
+    for i, link in enumerate(all_links, 1):
+        is_active = "АКТИВНА" if link.is_active else "❌ НЕАКТИВНА"
+        print(f"\n  {i}. [{is_active}] {link.short_code}:")
+        print(f"     URL: {link.original_url}")
+        print(f"     Создана: {link.created_by}")
+        print(f"     expires_at: {link.expires_at}")
+        print(f"     last_accessed: {link.last_accessed}")
+        if link.is_active:
+            active_count += 1
+    
+    print(f"\nАКТИВНЫХ ССЫЛОК: {active_count}")
+    
+    print(f"\n🔬 ТЕСТИРУЕМ РАЗНЫЕ ВАРИАНТЫ ПОИСКА:")
+    
+    links1 = db.query(models.Link).filter(
         models.Link.original_url.contains(original_url),
         models.Link.is_active == True
     ).all()
+    print(f"  Вариант 1 (contains): найдено {len(links1)}")
     
-    print(f" Найдено ссылок: {len(links)}")
-    for i, link in enumerate(links, 1):
-        print(f"\n   Результат #{i}:")
-        print(f"     ID: {link.id}")
-        print(f"     Code: {link.short_code}")
-        print(f"     URL: {link.original_url}")
-        print(f"     Created by: {link.username}")
+    links2 = db.query(models.Link).filter(
+        models.Link.original_url.like(f"%{original_url}%"),
+        models.Link.is_active == True
+    ).all()
+    print(f"  Вариант 2 (like): найдено {len(links2)}")
     
-    result = [
+    links3 = db.query(models.Link).filter(
+        models.Link.original_url.ilike(f"%{original_url}%"),
+        models.Link.is_active == True
+    ).all()
+    print(f"  Вариант 3 (ilike): найдено {len(links3)}")
+    
+    links4 = db.query(models.Link).filter(
+        models.Link.original_url.endswith(original_url),
+        models.Link.is_active == True
+    ).all()
+    print(f"  Вариант 4 (endswith): найдено {len(links4)}")
+    
+    if original_url.startswith(('http://', 'https://')):
+        without_protocol = original_url.split('://', 1)[1]
+        links5 = db.query(models.Link).filter(
+            models.Link.original_url.contains(without_protocol),
+            models.Link.is_active == True
+        ).all()
+        print(f"  Вариант 5 (без протокола '{without_protocol}'): найдено {len(links5)}")
+    
+    # 3. Используем contains как основной (можно заменить на любой работающий)
+    links = links1
+    
+    print(f"\nИТОГ: возвращаем {len(links)} результатов")
+    print("="*60 + "\n")
+    
+    return [
         {
             "short_code": l.short_code,
             "short_url": f"{BASE_URL}/links/{l.short_code}",
@@ -239,12 +280,6 @@ def search_links(original_url: str, db: Session = Depends(models.get_db)):
         }
         for l in links
     ]
-    
-    print(f"\n Отправляем {len(result)} результатов")
-    print(f"{'='*50}\n")
-    
-    return result
-
 
 @router.get("/expired/history")
 def get_expired_links(db: Session = Depends(models.get_db)):
@@ -259,6 +294,7 @@ def get_expired_links(db: Session = Depends(models.get_db)):
             "expires_at": l.expires_at,
             "clicks": l.clicks,
             "last_accessed": l.last_accessed,
-            "reason": "expired" if l.expires_at and l.expires_at < datetime.utcnow() else "unused"}
+            "reason": "expired" if l.expires_at and l.expires_at < datetime.utcnow() else "unused"
+        }
         for l in expired
     ]
