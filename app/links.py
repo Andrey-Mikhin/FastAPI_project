@@ -369,3 +369,14 @@ def debug_test_search(db: Session = Depends(models.get_db)):
         ],
         "count": len(result)
     }
+
+@router.get("/debug/echo")
+def debug_echo(original_url: str):
+    """Просто вернуть то, что пришло в параметре"""
+    import json
+    return {
+        "received": original_url,
+        "length": len(original_url),
+        "repr": repr(original_url),
+        "ascii": [ord(c) for c in original_url]
+    }
