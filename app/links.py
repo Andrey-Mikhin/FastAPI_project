@@ -238,10 +238,15 @@ def search_links(original_url: str, db: Session = Depends(models.get_db)):
 
 @router.get("/search-new")
 def search_links_new(original_url: str, db: Session = Depends(models.get_db)):
-    """Версия с прямым SQL"""
+    """ИСПРАВЛЕННАЯ версия с очисткой параметра"""
     from sqlalchemy import text
     
-    logger.info(f"🔍 НОВЫЙ ПОИСК (RAW SQL): запрос '{original_url}'")
+    # Очищаем параметр от возможных пробелов и спецсимволов
+    clean_url = original_url.strip()
+    
+    logger.info(f"🔍 ПОИСК: параметр получен = '{original_url}'")
+    logger.info(f"🔍 ПОИСК: после очистки = '{clean_url}'")
+    logger.info(f"🔍 ПОИСК: длина параметра = {len(original_url)}")
     
     result = db.execute(
         text("""
@@ -249,10 +254,10 @@ def search_links_new(original_url: str, db: Session = Depends(models.get_db)):
             FROM links 
             WHERE original_url ILIKE :pattern AND is_active = true
         """),
-        {"pattern": f"%{original_url}%"}
+        {"pattern": f"%{clean_url}%"}
     ).fetchall()
     
-    logger.info(f"✅ Найдено (RAW): {len(result)}")
+    logger.info(f"✅ Найдено: {len(result)}")
     
     return [
         {
@@ -315,8 +320,6 @@ def debug_sql(db: Session = Depends(models.get_db)):
         ],
         "total_active": len(result)
     }
-
-# ========== НОВЫЕ ДИАГНОСТИЧЕСКИЕ ЭНДПОИНТЫ ==========
 
 @router.get("/debug/check/{short_code}")
 def debug_check_link(short_code: str, db: Session = Depends(models.get_db)):
