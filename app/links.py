@@ -236,6 +236,28 @@ def search_links(original_url: str, db: Session = Depends(models.get_db)):
         for l in links
     ]
 
+@router.get("/search-new")
+def search_links_new(original_url: str, db: Session = Depends(models.get_db)):
+    """НОВАЯ версия поиска для тестирования"""
+    logger.info(f"🔍 НОВЫЙ ПОИСК: запрос '{original_url}'")
+    
+    links = db.query(models.Link).filter(
+        models.Link.original_url.ilike(f"%{original_url}%"),
+        models.Link.is_active == True
+    ).all()
+    
+    logger.info(f"✅ Найдено: {len(links)}")
+    
+    return [
+        {
+            "short_code": l.short_code,
+            "short_url": f"{BASE_URL}/links/{l.short_code}",
+            "original_url": l.original_url,
+            "created_by": l.username
+        }
+        for l in links
+    ]
+
 @router.get("/expired/history")
 def get_expired_links(db: Session = Depends(models.get_db)):
     """История всех неактивных ссылок"""
@@ -257,14 +279,17 @@ def get_expired_links(db: Session = Depends(models.get_db)):
 
 @router.get("/debug/sql")
 def debug_sql(db: Session = Depends(models.get_db)):
+    """Прямой SQL-запрос к таблице links"""
     from sqlalchemy import text
     
+    # Получаем все активные ссылки через прямой SQL
     result = db.execute(text("""
         SELECT short_code, original_url, is_active, username
         FROM links 
         WHERE is_active = true
     """)).fetchall()
     
+    # Получаем структуру таблицы
     structure = db.execute(text("""
         SELECT column_name, data_type 
         FROM information_schema.columns 
