@@ -311,3 +311,69 @@ def get_expired_links(db: Session = Depends(models.get_db)):
         }
         for l in expired
     ]
+
+# ========== НОВЫЕ DEBUG ЭНДПОИНТЫ ==========
+
+@router.get("/debug/all")
+def debug_all(db: Session = Depends(models.get_db)):
+    """Вернуть ВСЕ ссылки без фильтров"""
+    links = db.query(models.Link).all()
+    result = {
+        "total_count": len(links),
+        "active_count": 0,
+        "inactive_count": 0,
+        "links": []
+    }
+    
+    for link in links:
+        link_info = {
+            "short_code": link.short_code,
+            "original_url": link.original_url,
+            "is_active": link.is_active,
+            "created_by": link.username,
+            "created_at": str(link.created_at),
+            "clicks": link.clicks,
+            "last_accessed": str(link.last_accessed) if link.last_accessed else None,
+            "expires_at": str(link.expires_at) if link.expires_at else None
+        }
+        result["links"].append(link_info)
+        
+        if link.is_active:
+            result["active_count"] += 1
+        else:
+            result["inactive_count"] += 1
+    
+    return result
+
+@router.get("/debug/active")
+def debug_active(db: Session = Depends(models.get_db)):
+    """Вернуть только активные ссылки"""
+    links = db.query(models.Link).filter(models.Link.is_active == True).all()
+    return [
+        {
+            "short_code": l.short_code,
+            "short_url": f"{BASE_URL}/links/{l.short_code}",
+            "original_url": l.original_url,
+            "created_by": l.username,
+            "clicks": l.clicks,
+            "created_at": str(l.created_at)
+        }
+        for l in links
+    ]
+
+@router.get("/debug/inactive")
+def debug_inactive(db: Session = Depends(models.get_db)):
+    """Вернуть только неактивные ссылки"""
+    links = db.query(models.Link).filter(models.Link.is_active == False).all()
+    return [
+        {
+            "short_code": l.short_code,
+            "original_url": l.original_url,
+            "created_by": l.username,
+            "clicks": l.clicks,
+            "created_at": str(l.created_at),
+            "expires_at": str(l.expires_at) if l.expires_at else None,
+            "last_accessed": str(l.last_accessed) if l.last_accessed else None
+        }
+        for l in links
+    ]
