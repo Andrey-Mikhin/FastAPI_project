@@ -7,8 +7,13 @@ import json
 import random
 import string
 import os
+import logging
 from typing import Optional
 from app import models, schemas, auth
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/links", tags=["links"])
 
@@ -211,65 +216,68 @@ def get_link_stats(short_code: str, db: Session = Depends(models.get_db)):
 
 @router.get("/search")
 def search_links(original_url: str, db: Session = Depends(models.get_db)):
-    print("\n" + "="*60)
-    print(f"🔍 ПОИСК: запрос '{original_url}'")
-    print(f"🕒 Время: {datetime.utcnow()}")
+    logger.info("="*60)
+    logger.info(f"🔍 ПОИСК: запрос '{original_url}'")
+    logger.info(f"🕒 Время: {datetime.utcnow()}")
     
+    # 1. Получаем ВСЕ ссылки
     all_links = db.query(models.Link).all()
-    print(f"\n ВСЕГО ССЫЛОК В БД: {len(all_links)}")
+    logger.info(f"📊 ВСЕГО ССЫЛОК В БД: {len(all_links)}")
     
     active_count = 0
     for i, link in enumerate(all_links, 1):
-        is_active = "АКТИВНА" if link.is_active else "❌ НЕАКТИВНА"
-        print(f"\n  {i}. [{is_active}] {link.short_code}:")
-        print(f"     URL: {link.original_url}")
-        print(f"     Создана: {link.created_by}")
-        print(f"     expires_at: {link.expires_at}")
-        print(f"     last_accessed: {link.last_accessed}")
+        is_active = "✅ АКТИВНА" if link.is_active else "❌ НЕАКТИВНА"
+        logger.info(f"  {i}. [{is_active}] {link.short_code}: {link.original_url} (by {link.username})")
         if link.is_active:
             active_count += 1
     
-    print(f"\nАКТИВНЫХ ССЫЛОК: {active_count}")
+    logger.info(f"📊 АКТИВНЫХ ССЫЛОК: {active_count}")
     
-    print(f"\n🔬 ТЕСТИРУЕМ РАЗНЫЕ ВАРИАНТЫ ПОИСКА:")
+    # 2. Тестируем разные варианты
+    logger.info("🔬 ТЕСТИРУЕМ РАЗНЫЕ ВАРИАНТЫ ПОИСКА:")
     
+    # Вариант 1: contains
     links1 = db.query(models.Link).filter(
         models.Link.original_url.contains(original_url),
         models.Link.is_active == True
     ).all()
-    print(f"  Вариант 1 (contains): найдено {len(links1)}")
+    logger.info(f"  Вариант 1 (contains): найдено {len(links1)}")
     
+    # Вариант 2: like
     links2 = db.query(models.Link).filter(
         models.Link.original_url.like(f"%{original_url}%"),
         models.Link.is_active == True
     ).all()
-    print(f"  Вариант 2 (like): найдено {len(links2)}")
+    logger.info(f"  Вариант 2 (like): найдено {len(links2)}")
     
+    # Вариант 3: ilike
     links3 = db.query(models.Link).filter(
         models.Link.original_url.ilike(f"%{original_url}%"),
         models.Link.is_active == True
     ).all()
-    print(f"  Вариант 3 (ilike): найдено {len(links3)}")
+    logger.info(f"  Вариант 3 (ilike): найдено {len(links3)}")
     
+    # Вариант 4: endswith
     links4 = db.query(models.Link).filter(
         models.Link.original_url.endswith(original_url),
         models.Link.is_active == True
     ).all()
-    print(f"  Вариант 4 (endswith): найдено {len(links4)}")
+    logger.info(f"  Вариант 4 (endswith): найдено {len(links4)}")
     
+    # Вариант 5: без протокола
     if original_url.startswith(('http://', 'https://')):
         without_protocol = original_url.split('://', 1)[1]
         links5 = db.query(models.Link).filter(
             models.Link.original_url.contains(without_protocol),
             models.Link.is_active == True
         ).all()
-        print(f"  Вариант 5 (без протокола '{without_protocol}'): найдено {len(links5)}")
+        logger.info(f"  Вариант 5 (без протокола '{without_protocol}'): найдено {len(links5)}")
     
-    # 3. Используем contains как основной (можно заменить на любой работающий)
+    # Используем contains
     links = links1
     
-    print(f"\nИТОГ: возвращаем {len(links)} результатов")
-    print("="*60 + "\n")
+    logger.info(f"✅ ИТОГ: возвращаем {len(links)} результатов")
+    logger.info("="*60)
     
     return [
         {
