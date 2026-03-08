@@ -220,7 +220,7 @@ def get_link_stats(short_code: str, db: Session = Depends(models.get_db)):
 
 @router.get("/search")
 def search_links(original_url: str, db: Session = Depends(models.get_db)):
-    """Поиск ссылок по части оригинального URL (регистронезависимый)"""
+    """Поиск ссылок по части оригинального URL (через ORM)"""
     links = db.query(models.Link).filter(
         models.Link.original_url.ilike(f"%{original_url}%"),
         models.Link.is_active == True
@@ -238,24 +238,31 @@ def search_links(original_url: str, db: Session = Depends(models.get_db)):
 
 @router.get("/search-new")
 def search_links_new(original_url: str, db: Session = Depends(models.get_db)):
-    """НОВАЯ версия поиска для тестирования"""
-    logger.info(f"🔍 НОВЫЙ ПОИСК: запрос '{original_url}'")
+    """ВРЕМЕННАЯ версия с прямым SQL для диагностики"""
+    from sqlalchemy import text
     
-    links = db.query(models.Link).filter(
-        models.Link.original_url.ilike(f"%{original_url}%"),
-        models.Link.is_active == True
-    ).all()
+    logger.info(f"🔍 НОВЫЙ ПОИСК (RAW SQL): запрос '{original_url}'")
     
-    logger.info(f"✅ Найдено: {len(links)}")
+    # Выполняем прямой SQL запрос с параметром
+    result = db.execute(
+        text("""
+            SELECT short_code, original_url, username 
+            FROM links 
+            WHERE original_url ILIKE :pattern AND is_active = true
+        """),
+        {"pattern": f"%{original_url}%"}
+    ).fetchall()
+    
+    logger.info(f"✅ Найдено (RAW): {len(result)}")
     
     return [
         {
-            "short_code": l.short_code,
-            "short_url": f"{BASE_URL}/links/{l.short_code}",
-            "original_url": l.original_url,
-            "created_by": l.username
+            "short_code": r[0],
+            "short_url": f"{BASE_URL}/links/{r[0]}",
+            "original_url": r[1],
+            "created_by": r[2]
         }
-        for l in links
+        for r in result
     ]
 
 @router.get("/expired/history")
