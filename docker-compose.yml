@@ -43,16 +43,13 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # PostgreSQL
       DB_USER: user
       DB_PASS: password
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: urlshortener
-      # Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      # Приложение
       BASE_URL: http://localhost:8000
       SECRET_KEY: your-super-secret-key-change-in-production
       UNUSED_DAYS: 30
