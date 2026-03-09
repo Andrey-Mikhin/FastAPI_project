@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, Form  # Добавил Form
+from fastapi import APIRouter, Depends, HTTPException, Response, Cookie, Form
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 import hashlib
@@ -69,3 +69,4 @@ def get_current_user(
     if not session_id:
         return None
     return db.query(models.User).filter(models.User.username == session_id).first()
+
