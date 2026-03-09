@@ -293,6 +293,27 @@ def search_fixed(original_url: str, db: Session = Depends(models.get_db)):
         for r in result
     ]
 
+@router.get("/find")
+def find_links(original_url: str, db: Session = Depends(models.get_db)):
+    """Максимально простой поиск с уникальным именем"""
+    from sqlalchemy import text
+    
+    result = db.execute(
+        text("SELECT short_code, original_url, username FROM links WHERE is_active = true")
+    ).fetchall()
+    
+    found = []
+    for r in result:
+        if original_url.lower() in r[1].lower():
+            found.append({
+                "short_code": r[0],
+                "short_url": f"{BASE_URL}/links/{r[0]}",
+                "original_url": r[1],
+                "created_by": r[2]
+            })
+    
+    return found
+
 @router.get("/expired/history")
 def get_expired_links(db: Session = Depends(models.get_db)):
     """История всех неактивных ссылок"""
