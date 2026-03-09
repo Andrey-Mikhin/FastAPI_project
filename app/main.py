@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends
 from fastapi.responses import HTMLResponse
 import asyncio
 from datetime import datetime, timedelta
@@ -56,43 +56,20 @@ def root(current_user = Depends(get_current_user)):
             <title>URL Shortener</title>
             <style>
                 body {{ font-family: Arial; margin: 40px; }}
-                input {{ padding: 8px; margin: 5px; width: 300px; }}
-                button {{ padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }}
                 .info {{ background: #f0f0f0; padding: 10px; margin: 10px 0; }}
-                pre {{ background: #f4f4f4; padding: 10px; }}
+                .button {{ display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; }}
             </style>
         </head>
         <body>
-            <h1>URL Shortener</h1>
+            <h1>URL Shortener API</h1>
             <div class="info">
-                <strong>Current user:</strong> {username} | 
-                <a href="/docs">API Documentation</a>
+                <strong>Current user:</strong> {username}
             </div>
             
-            <h2>Регистрация (JSON)</h2>
-            <p>Для тестирования через браузер используйте <a href="/docs">Swagger UI</a></p>
+            <p>Документация API доступна в Swagger UI:</p>
+            <a href="/docs" class="button">Перейти к документации API →</a>
             
-            <h3>Примеры curl команд:</h3>
-            <pre>
-# Регистрация
-curl -X POST {os.getenv('BASE_URL', 'https://url-shortener-app-p5ro.onrender.com')}/register \\
-  -H "Content-Type: application/json" \\
-  -d '{{"username": "test", "password": "test123"}}'
-
-# Вход
-curl -X POST {os.getenv('BASE_URL', 'https://url-shortener-app-p5ro.onrender.com')}/login \\
-  -H "Content-Type: application/json" \\
-  -d '{{"username": "test", "password": "test123"}}' \\
-  -c cookies.txt
-
-# Создание ссылки
-curl -X POST {os.getenv('BASE_URL', 'https://url-shortener-app-p5ro.onrender.com')}/links/shorten \\
-  -H "Content-Type: application/json" \\
-  -d '{{"original_url": "https://google.com"}}'
-            </pre>
-            
-            <h2>Используйте Swagger UI для тестирования</h2>
-            <p><a href="/docs">Перейти к документации API →</a></p>
+            <p style="margin-top: 30px;">Используйте Swagger UI для тестирования всех эндпоинтов.</p>
         </body>
     </html>
     """
@@ -105,10 +82,9 @@ def me(current_user = Depends(get_current_user)):
             "username": current_user.username,
             "created_at": current_user.created_at
         }
-
     return {"authenticated": False, "username": "anonymous"}
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
-
