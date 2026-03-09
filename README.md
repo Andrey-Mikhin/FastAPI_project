@@ -5,17 +5,27 @@
 Описание API:
 
 1) Аутентификация
+
 POST - /register - Регистрация нового пользователя
+
 POST- `/login` - Вход в систему
+
 POST - `/logout` - Выход из систему
 
 2) Работа с ссылками
+   
 POST - `/links/shorten` - Создание короткой ссылки
+
 GET - `/links/{short_code}` - Редирект на оригинальный URL
+
 GET - `/links/{code}/stats` - Статистика по ссылке
+
 PUT - `/links/{short_code}` - Обновление URL ссылки
+
 DELETE - `/links/{short_code}`- Удаление ссылки
+
 GET - `/links/search?original_url={url}` - Поиск по оригинальному URL
+
 GET - `/links/expired/history` - История истекших ссылок
 
 Примеры запросов
