@@ -86,62 +86,9 @@ def create_short_link(
         "created_by": db_link.username
     }
 
-# ========== ВСЕ СПЕЦИФИЧНЫЕ МАРШРУТЫ ПЕРЕД {short_code} ==========
-
 @router.get("/search")
 def search_links(original_url: str, db: Session = Depends(models.get_db)):
     """Поиск ссылок по части оригинального URL"""
-    links = db.query(models.Link).filter(
-        models.Link.original_url.ilike(f"%{original_url}%"),
-        models.Link.is_active == True
-    ).all()
-    
-    return [
-        {
-            "short_code": l.short_code,
-            "short_url": f"{BASE_URL}/links/{l.short_code}",
-            "original_url": l.original_url,
-            "created_by": l.username
-        }
-        for l in links
-    ]
-
-@router.get("/search-new")
-def search_links_new(original_url: str, db: Session = Depends(models.get_db)):
-    """ИСПРАВЛЕННАЯ версия с очисткой параметра"""
-    from sqlalchemy import text
-    
-    # Очищаем параметр от возможных пробелов и спецсимволов
-    clean_url = original_url.strip()
-    
-    logger.info(f"🔍 ПОИСК: параметр получен = '{original_url}'")
-    logger.info(f"🔍 ПОИСК: после очистки = '{clean_url}'")
-    logger.info(f"🔍 ПОИСК: длина параметра = {len(original_url)}")
-    
-    result = db.execute(
-        text("""
-            SELECT short_code, original_url, username 
-            FROM links 
-            WHERE original_url ILIKE :pattern AND is_active = true
-        """),
-        {"pattern": f"%{clean_url}%"}
-    ).fetchall()
-    
-    logger.info(f"✅ Найдено: {len(result)}")
-    
-    return [
-        {
-            "short_code": r[0],
-            "short_url": f"{BASE_URL}/links/{r[0]}",
-            "original_url": r[1],
-            "created_by": r[2]
-        }
-        for r in result
-    ]
-
-@router.get("/search-fixed")
-def search_fixed(original_url: str, db: Session = Depends(models.get_db)):
-    """Окончательная исправленная версия поиска (рабочая)"""
     from sqlalchemy import text
     
     result = db.execute(
@@ -163,35 +110,6 @@ def search_fixed(original_url: str, db: Session = Depends(models.get_db)):
         for r in result
     ]
 
-@router.get("/find")
-def find_links(original_url: str, db: Session = Depends(models.get_db)):
-    """Максимально простой поиск с уникальным именем"""
-    from sqlalchemy import text
-    
-    result = db.execute(
-        text("SELECT short_code, original_url, username FROM links WHERE is_active = true")
-    ).fetchall()
-    
-    found = []
-    for r in result:
-        if original_url.lower() in r[1].lower():
-            found.append({
-                "short_code": r[0],
-                "short_url": f"{BASE_URL}/links/{r[0]}",
-                "original_url": r[1],
-                "created_by": r[2]
-            })
-    
-    return found
-
-@router.get("/ping")
-def ping():
-    """Простой тестовый эндпоинт"""
-    return {
-        "message": "pong",
-        "time": str(datetime.utcnow())
-    }
-
 @router.get("/expired/history")
 def get_expired_links(db: Session = Depends(models.get_db)):
     """История всех неактивных ссылок"""
@@ -210,101 +128,6 @@ def get_expired_links(db: Session = Depends(models.get_db)):
         }
         for l in expired
     ]
-
-@router.get("/debug/sql")
-def debug_sql(db: Session = Depends(models.get_db)):
-    """Прямой SQL-запрос к таблице links"""
-    from sqlalchemy import text
-    
-    result = db.execute(text("""
-        SELECT short_code, original_url, is_active, username
-        FROM links 
-        WHERE is_active = true
-    """)).fetchall()
-    
-    structure = db.execute(text("""
-        SELECT column_name, data_type 
-        FROM information_schema.columns 
-        WHERE table_name = 'links'
-    """)).fetchall()
-    
-    return {
-        "table_structure": [
-            {"column": r[0], "type": r[1]} for r in structure
-        ],
-        "active_links": [
-            {
-                "short_code": r[0],
-                "original_url": r[1],
-                "is_active": r[2],
-                "created_by": r[3]
-            }
-            for r in result
-        ],
-        "total_active": len(result)
-    }
-
-@router.get("/debug/check/{short_code}")
-def debug_check_link(short_code: str, db: Session = Depends(models.get_db)):
-    """Проверить конкретную ссылку по short_code"""
-    from sqlalchemy import text
-    
-    result = db.execute(
-        text("SELECT short_code, original_url, is_active, username FROM links WHERE short_code = :code"),
-        {"code": short_code}
-    ).first()
-    
-    if not result:
-        return {"error": f"Link {short_code} not found in database"}
-    
-    return {
-        "short_code": result[0],
-        "original_url": result[1],
-        "is_active": result[2],
-        "created_by": result[3],
-        "message": "✅ Link found in database"
-    }
-
-@router.get("/debug/test-search")
-def debug_test_search(db: Session = Depends(models.get_db)):
-    """Тестовый поиск с фиксированным параметром 'simple'"""
-    from sqlalchemy import text
-    
-    search_term = "simple"
-    result = db.execute(
-        text("""
-            SELECT short_code, original_url, username 
-            FROM links 
-            WHERE original_url ILIKE :pattern AND is_active = true
-        """),
-        {"pattern": f"%{search_term}%"}
-    ).fetchall()
-    
-    return {
-        "search_term": search_term,
-        "results": [
-            {
-                "short_code": r[0],
-                "original_url": r[1],
-                "created_by": r[2]
-            }
-            for r in result
-        ],
-        "count": len(result)
-    }
-
-@router.get("/debug/echo")
-def debug_echo(original_url: str):
-    """Просто вернуть то, что пришло в параметре"""
-    import json
-    return {
-        "received": original_url,
-        "length": len(original_url),
-        "repr": repr(original_url),
-        "ascii": [ord(c) for c in original_url]
-    }
-
-# ========== МАРШРУТЫ С ПАРАМЕТРАМИ (ДОЛЖНЫ БЫТЬ ПОСЛЕ ВСЕХ СПЕЦИФИЧНЫХ) ==========
 
 @router.get("/{short_code}")
 def redirect_to_url(short_code: str, db: Session = Depends(models.get_db)):
