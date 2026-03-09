@@ -314,6 +314,14 @@ def find_links(original_url: str, db: Session = Depends(models.get_db)):
     
     return found
 
+@router.get("/ping")
+def ping():
+    """Простой тестовый эндпоинт"""
+    return {
+        "message": "pong",
+        "time": str(datetime.utcnow())
+    }
+
 @router.get("/expired/history")
 def get_expired_links(db: Session = Depends(models.get_db)):
     """История всех неактивных ссылок"""
