@@ -68,22 +68,37 @@ uvicorn app.main:app --reload --port 8000
 
 Описание базы данных
 1) Таблица users
+   
 id- Integer -	Первичный ключ
+
 username- 	String - Уникальное имя пользователя
+
 password_hash- String- Хеш пароля
+
 created_at - DateTime - Дата регистрации
 
 2) Таблица links
+   
 id - Integer - Первичный ключ
+
 short_code - String - Уникальный код ссылки
+
 original_url - String - Оригинальный URL
+
 custom_alias - String - Пользовательский алиас
+
 created_at - DateTime - Дата создания
+
 expires_at - DateTime - Дата истечения
+
 clicks - Integer - Количество переходов
+
 last_accessed - DateTime - Последний переход
+
 is_active - Boolean - Активна ли ссылка
+
 user_id - Integer - ID создателя
+
 username - String - Имя создателя
 
 Дополнительные улучшения
