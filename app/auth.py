@@ -43,8 +43,8 @@ def register(
 
 @router.post("/login")
 def login(
-    username: str = Form(...),  # Вместо user: schemas.UserLogin
-    password: str = Form(...),  # Вместо user: schemas.UserLogin
+    username: str = Form(...),
+    password: str = Form(...),
     db: Session = Depends(models.get_db)
 ):
     db_user = db.query(models.User).filter(models.User.username == username).first()
@@ -69,4 +69,3 @@ def get_current_user(
     if not session_id:
         return None
     return db.query(models.User).filter(models.User.username == session_id).first()
-
