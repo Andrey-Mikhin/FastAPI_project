@@ -1,13 +1,11 @@
-﻿from sqlalchemy import create_engine, Column, String, Integer, DateTime, Boolean
+from sqlalchemy import create_engine, Column, String, Integer, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 import os
 
-
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    # Fallback для локальной разработки
     DB_USER = os.getenv("DB_USER", "user")
     DB_PASS = os.getenv("DB_PASS", "password")
     DB_HOST = os.getenv("DB_HOST", "db")
@@ -50,5 +48,4 @@ def get_db():
     try:
         yield db
     finally:
-
         db.close()
