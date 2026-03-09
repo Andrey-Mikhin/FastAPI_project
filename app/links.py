@@ -15,8 +15,7 @@ from app import models, schemas, auth
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    stream=sys.stdout
-)
+    stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/links", tags=["links"])
@@ -63,8 +62,7 @@ def create_short_link(
         custom_alias=link_data.custom_alias,
         expires_at=link_data.expires_at,
         user_id=current_user.id if current_user else None,
-        username=current_user.username if current_user else "anonymous"
-    )
+        username=current_user.username if current_user else "anonymous")
     
     db.add(db_link)
     db.commit()
@@ -88,7 +86,6 @@ def create_short_link(
 
 @router.get("/search")
 def search_links(original_url: str, db: Session = Depends(models.get_db)):
-    """Поиск ссылок по части оригинального URL"""
     from sqlalchemy import text
     
     result = db.execute(
@@ -112,7 +109,6 @@ def search_links(original_url: str, db: Session = Depends(models.get_db)):
 
 @router.get("/expired/history")
 def get_expired_links(db: Session = Depends(models.get_db)):
-    """История всех неактивных ссылок"""
     expired = db.query(models.Link).filter(models.Link.is_active == False).all()
     
     return [
@@ -124,8 +120,7 @@ def get_expired_links(db: Session = Depends(models.get_db)):
             "expires_at": l.expires_at,
             "clicks": l.clicks,
             "last_accessed": l.last_accessed,
-            "reason": "expired" if l.expires_at and l.expires_at < datetime.utcnow() else "unused"
-        }
+            "reason": "expired" if l.expires_at and l.expires_at < datetime.utcnow() else "unused"}
         for l in expired
     ]
 
